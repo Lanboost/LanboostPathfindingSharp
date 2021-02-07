@@ -16,6 +16,7 @@ namespace Lanboost.PathFinding.GraphBuilders
 		BottomLeft,
 		Left,
 		TopLeft,
+		None
 	}
 
 	public enum EdgeConstraint
@@ -163,6 +164,11 @@ namespace Lanboost.PathFinding.GraphBuilders
 
 		List<N> FindSubGoalLinks(N n)
 		{
+			if(world.IsBlocked(n, TileDirection.None))
+			{
+				return new List<N>();
+			}
+
 			List<N> subGoals = new List<N>();
 
 			foreach (var dir in tileDirections)
@@ -170,7 +176,7 @@ namespace Lanboost.PathFinding.GraphBuilders
 				var now = n;
 				while (true)
 				{
-					if (world.IsBlocked(now, dir[0]))
+					if (world.IsBlocked(now, dir[0]) || world.IsBlocked(now, dir[1]) || world.IsBlocked(now, dir[2]))
 					{
 						break;
 					}
@@ -178,12 +184,21 @@ namespace Lanboost.PathFinding.GraphBuilders
 					{
 						now = world.GetTile(now, dir[0]);
 
-						for (int i = 1; i < dir.Length; i++)
+						if (IsSubGoal(now))
 						{
-							var r = Raycast(now, dir[i]);
-							if (r.Item1)
+							subGoals.Add(now);
+							break;
+						}
+						else
+						{
+
+							for (int i = 1; i < dir.Length; i++)
 							{
-								subGoals.Add(r.Item2);
+								var r = Raycast(now, dir[i]);
+								if (r.Item1)
+								{
+									subGoals.Add(r.Item2);
+								}
 							}
 						}
 					}
@@ -226,7 +241,7 @@ namespace Lanboost.PathFinding.GraphBuilders
 
 			foreach (var dir in tileDirections)
 			{
-				if (world.IsBlocked(tile, dir[0]) && !world.IsBlocked(tile, dir[1]) && !world.IsBlocked(tile, dir[2]))
+				if (!world.IsBlocked(tile, TileDirection.None) && world.IsBlocked(tile, dir[0]) && !world.IsBlocked(tile, dir[1]) && !world.IsBlocked(tile, dir[2]))
 				{
 					return true;
 				}

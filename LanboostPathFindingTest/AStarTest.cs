@@ -7,9 +7,7 @@ using Moq;
 
 namespace LanboostPathFindingTest
 {
-
-	using Position = Tuple<int, int>;
-	using Edge = Tuple<Tuple<int, int>, Tuple<int, int>>;
+	
 
 	[TestClass]
 	public class AStarTest
@@ -37,7 +35,7 @@ namespace LanboostPathFindingTest
 			var astar = new AStar<Position, Edge>(tileGraph, 100);
 			var start = new Position(0, 0);
 			var end = new Position(0, 2);
-			var expectedPath = new List<Tuple<Tuple<int, int>, Tuple<int, int>>>();
+			var expectedPath = new List<Edge>();
 			expectedPath.Add(new Edge(new Position(0, 0), new Position(1, 0)));
 			expectedPath.Add(new Edge(new Position(1, 0), new Position(1, 1)));
 			expectedPath.Add(new Edge(new Position(1, 1), new Position(1, 2)));

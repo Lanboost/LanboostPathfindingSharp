@@ -68,9 +68,18 @@ namespace Lanboost.PathFinding.Graph
 		Dictionary<P, List<P>> nodesToNode = new Dictionary<P, List<P>>();
 
 		P startNode;
+		P endNode;
 		List<Edge<P, L>> startEdges;
 		Dictionary<P, Edge<P, L>> endEdges;
 
+
+		public IEnumerable<P> GetNodes()
+		{
+			foreach(var k in nodes.Keys)
+			{
+				yield return k;
+			}
+		}
 
 		public DynamicDirectedGraph(IGraphBuilder<P, L> graphBuilder)
 		{
@@ -89,6 +98,7 @@ namespace Lanboost.PathFinding.Graph
 
 		public IEnumerable<L> GetEdges(P node)
 		{
+
 			if (startNode.Equals(node))
 			{
 				foreach (var l in startEdges)
@@ -99,6 +109,14 @@ namespace Lanboost.PathFinding.Graph
 			}
 			else
 			{
+
+				if (endEdges.ContainsKey(node))
+				{
+					
+					yield return endEdges[node].link;
+					
+				}
+
 				if (nodes.ContainsKey(node))
 				{
 					var inner = nodes[node];
@@ -122,6 +140,16 @@ namespace Lanboost.PathFinding.Graph
 					}
 				}
 			}
+			else if (endNode.Equals(From))
+			{
+				foreach(var e in endEdges)
+				{
+					if(e.Value.link.Equals(link))
+					{
+						return e.Key;
+					}
+				}
+			}
 			else
 			{
 				// Check if link is in endEdges
@@ -133,13 +161,39 @@ namespace Lanboost.PathFinding.Graph
 					}
 				}
 
+				{
+					var inner = nodes[From];
+					foreach (var l in inner.edges)
+					{
+						if (l.link.Equals(link))
+						{
+							return l.to;
+						}
+					}
+				}
 
-				var inner = nodes[From];
-				foreach (var l in inner.edges)
+				// check if we are backtracking
+				{
+					var innerNodes = nodesToNode[From];
+					foreach (var innerNode in innerNodes)
+					{
+						var inner = nodes[innerNode];
+						foreach (var l in inner.edges)
+						{
+							if (l.link.Equals(link))
+							{
+								return innerNode;
+							}
+						}
+					}
+				}
+
+				//backtrack to start
+				foreach (var l in startEdges)
 				{
 					if (l.link.Equals(link))
 					{
-						return l.to;
+						return startNode;
 					}
 				}
 			}
@@ -222,6 +276,8 @@ namespace Lanboost.PathFinding.Graph
 
 		public void AddTemporaryStartEndNodes(P start, P end)
 		{
+			
+
 			if (!this.nodes.ContainsKey(start))
 			{
 				var edgeTuple = this.graphBuilder.BuilderGetEdges(start);
@@ -231,6 +287,7 @@ namespace Lanboost.PathFinding.Graph
 
 			if (!this.nodes.ContainsKey(end))
 			{
+				endNode = end;
 				var edgeTuple = this.graphBuilder.BuilderGetEdges(end);
 				endEdges = edgeTuple.Item2;
 			}

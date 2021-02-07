@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.1062
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LanboostPathFinding", "LanboostPathFinding\LanboostPathFinding.csproj", "{F4D42CC4-8C84-44FC-B764-5C85FB2F6858}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LanboostPathFinding", "LanboostPathFinding\LanboostPathFinding.csproj", "{F4D42CC4-8C84-44FC-B764-5C85FB2F6858}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LanboostPathFindingTest", "LanboostPathFindingTest\LanboostPathFindingTest.csproj", "{F5819022-FE06-47A6-98DF-6A1F761E3E7E}"
 EndProject

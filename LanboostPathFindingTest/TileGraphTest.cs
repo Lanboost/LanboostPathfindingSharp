@@ -16,7 +16,7 @@ namespace LanboostPathFindingTest
 		[TestMethod]
 		public void PositionShouldBeEqual()
 		{
-			Assert.AreEqual(new Tuple<int, int>(1,1), new Tuple<int, int>(1, 1));
+			Assert.AreEqual(new Position(1,1), new Position(1, 1));
 		}
 
 		[TestMethod]
@@ -27,7 +27,7 @@ namespace LanboostPathFindingTest
 				new bool[]{true }
 			});
 
-			var ret = tileGraph.GetEdges(new Tuple<int, int>(0,0)).ToList();
+			var ret = tileGraph.GetEdges(new Position(0,0)).ToList();
 			Assert.AreEqual(0, ret.Count);
 		}
 
@@ -41,7 +41,7 @@ namespace LanboostPathFindingTest
 				new bool[]{ true, true , true}
 			});
 
-			var ret = tileGraph.GetEdges(new Tuple<int, int>(1, 1)).ToList();
+			var ret = tileGraph.GetEdges(new Position(1, 1)).ToList();
 			Assert.AreEqual(4, ret.Count);
 		}
 
@@ -55,7 +55,7 @@ namespace LanboostPathFindingTest
 				new bool[]{ true, false, true}
 			});
 
-			var ret = tileGraph.GetEdges(new Tuple<int, int>(1, 1)).ToList();
+			var ret = tileGraph.GetEdges(new Position(1, 1)).ToList();
 			Assert.AreEqual(0, ret.Count);
 		}
 
