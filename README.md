@@ -7,6 +7,10 @@ The library includes A-star (A*) and SubGoal Optimized path finding.
 - Generic A-star
 - 2D based SubGoal graph optimal pathfinder [[1]](#1)
  
+## Example
+
+https://lanboost.github.io/LanboostPathfindingSharp/
+
 ## Dependencies
 - OptimizedPriorityQueue
 - Moq [Test]
