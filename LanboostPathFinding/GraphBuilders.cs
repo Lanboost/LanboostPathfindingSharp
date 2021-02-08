@@ -19,6 +19,56 @@ namespace Lanboost.PathFinding.GraphBuilders
 		None
 	}
 
+	public class TileDirectionUtils
+	{
+
+		public static int Opposite(TileDirection dir)
+		{
+			var t = new int[] {
+				4,
+				5,
+				6,
+				7,
+				1,
+				2,
+				3
+			};
+			return t[(int)dir];
+		}
+
+		public static int[] TileDirectionOffset(TileDirection dir)
+		{
+			var t = new int[][] {
+				new int[] { 0, 1 },
+				new int[] { 1, 1 },
+				new int[] { 1, 0 },
+				new int[] { 1, -1 },
+				new int[] { 0, -1 },
+				new int[] { -1, -1 },
+				new int[] { -1, 0 },
+				new int[] { -1, 1 },
+				new int[] { 0, 0 }
+			};
+			return t[(int)dir];
+		}
+
+		public static TileDirection[] SplitDiagonal(TileDirection dir)
+		{
+			var t = new TileDirection[][] {
+				null,
+				new TileDirection[] { TileDirection.Top, TileDirection.Right },
+				null,
+				new TileDirection[] { TileDirection.Right, TileDirection.Bottom },
+				null,
+				new TileDirection[] { TileDirection.Bottom, TileDirection.Left },
+				null,
+				new TileDirection[] { TileDirection.Left, TileDirection.Top },
+				null
+			};
+			return t[(int)dir];
+		}
+	}
+
 	public enum EdgeConstraint
 	{
 		Direction,
@@ -29,15 +79,16 @@ namespace Lanboost.PathFinding.GraphBuilders
 	{
 		N GetTile(N p, TileDirection d);
 
-		bool IsBlocked(N p, TileDirection d);
+		//bool IsBlocked(Position area, int offsetX, int offsetY);
 
 		IEnumerable<N> BuilderGetTiles();
 
-		int GetCost(L link);
+		int GetCost(N from, N to, L link);
 
 		int GetEstimation(N from, N to);
 
 		L CreateEdge(N from, N to);
+		//N CreateNode(Position area, int offsetX, int offsetY);
 	}
 
 	public class RemoteLink<N, L>
@@ -53,16 +104,16 @@ namespace Lanboost.PathFinding.GraphBuilders
 			this.link = link;
 		}
 	}
-
-	public class RemoteGraphBuilder<N, L> : IGraphBuilder<N, L>
+	/*
+	public class RemoteGraphBuilder<A, N, L> : IGraphBuilder<A, N, L>
 	{
 		Dictionary<N, List<RemoteLink<N, L>>> remotes = new Dictionary<N, List<RemoteLink<N, L>>>();
 		Dictionary<N, List<RemoteLink<N, L>>> remotesTo = new Dictionary<N, List<RemoteLink<N, L>>>();
 		Dictionary<L, int> cost = new Dictionary<L, int>();
 
-		IGraphBuilder<N, L> parent;
+		IGraphBuilder<A, N, L> parent;
 
-		public RemoteGraphBuilder(IGraphBuilder<N, L> parent)
+		public RemoteGraphBuilder(IGraphBuilder<A, N, L> parent)
 		{
 			this.parent = parent;
 		}
@@ -116,6 +167,56 @@ namespace Lanboost.PathFinding.GraphBuilders
 		{
 			return parent.GetEstimation(from, to);
 		}
+	}*/
+
+	/*public class CacheArea {
+		byte[][] blockType;
+		short[][][] distance;
+		byte[][][] distanceType;
+
+		int dirty = 0;
+
+		public static byte TYPE_BLOCKED = 1;
+		public static byte TYPE_OPEN = 0;
+		public static byte TYPE_SUBGOAL = 2;
+
+		public static byte DIRTY_TOP = 1;
+		public static byte DIRTY_RIGHT = 2;
+		public static byte DIRTY_BOTTOM = 4;
+		public static byte DIRTY_LEFT = 8;
+		public static byte DIRTY_ALL = 15;
+
+		public CacheArea(int width, int height)
+		{
+			this.blockType = new byte[height][];
+			for(int y=0; y<height; y++)
+			{
+				this.blockType[y] = new byte[width];
+			}
+
+			this.distance = new short[4][][];
+			this.distanceType = new byte[4][][];
+			for (int i = 0; i < 4; i++)
+			{
+				this.distance[i] = new short[height][];
+				this.distanceType[i] = new byte[height][];
+				for (int y = 0; y < height; y++)
+				{
+					this.distance[i][y] = new short[width];
+					this.distanceType[i][y] = new byte[width];
+				}
+			}
+		}
+
+		public byte Get(int x, int y)
+		{
+			return blockType[y][x];
+		}
+
+		public void Set(int x, int y, byte v)
+		{
+			blockType[y][x] = v;
+		}
 	}
 
 	/// <summary>
@@ -126,37 +227,221 @@ namespace Lanboost.PathFinding.GraphBuilders
 	/// </remarks>
 	/// <typeparam name="N"></typeparam>
 	/// <typeparam name="L"></typeparam>
-	public class SubGoalGraphBuilder2D<N, L> : IGraphBuilder<N, L>
+	public class SubGoalGraphBuilder2D<N, L> : IGraphBuilder<Position, N, L>
 	{
-		ITileWorld<N, L> world;
-
-		static TileDirection[][] tileDirections = new TileDirection[][]{
-			new TileDirection[] { TileDirection.TopRight, TileDirection.Top, TileDirection.Right},
-			new TileDirection[] { TileDirection.BottomRight, TileDirection.Right, TileDirection.Bottom},
-			new TileDirection[] {TileDirection.BottomLeft, TileDirection.Bottom, TileDirection.Left},
-			new TileDirection[] { TileDirection.TopLeft, TileDirection.Left, TileDirection.Top}
+		int[][][] subGoalOffsets = new int[][][]
+		{
+			new int[][]
+			{
+				new int[] {1,1 },
+				new int[] {0,1 },
+				new int[] {1,0 },
+			},
+			new int[][]
+			{
+				new int[] {1,-1 },
+				new int[] {0,-1 },
+				new int[] {1,0 },
+			},
+			new int[][]
+			{
+				new int[] {-1,-1 },
+				new int[] {0,-1 },
+				new int[] {-1,0 },
+			},
+			new int[][]
+			{
+				new int[] {-1,1 },
+				new int[] {0,1 },
+				new int[] {-1,0 },
+			}
 		};
+
+		Dictionary<Position, CacheArea> areas = new Dictionary<Position, CacheArea>();
+		ITileWorld<N, L> world;
+		int width = 0;
+		int height = 0;
 
 		public SubGoalGraphBuilder2D(ITileWorld<N, L> world)
 		{
 			this.world = world;
+			this.width = world.GetAreaWidth();
+			this.height = world.GetAreaHeight();
 		}
 
-		Tuple<bool, N> Raycast(N n, TileDirection direction)
+		
+
+		struct AreaOffset{
+			int dirX;
+			int dirY;
+			public int offsetX;
+			public int offsetY;
+			public CacheArea cache;
+			public Position area;
+			TileDirection dir;
+			int height;
+			int width;
+			bool error;
+
+			Dictionary<Position, CacheArea> areas;
+			ITileWorld<N, L> world;
+
+			public AreaOffset(Dictionary<Position, CacheArea> areas, ITileWorld<N, L> world, Position area, int x, int y, TileDirection dir)
+			{
+				this.areas = areas;
+				this.world = world;
+				var off = TileDirectionUtils.TileDirectionOffset(dir);
+				this.dir = dir;
+				dirX = off[0];
+				dirY = off[1];
+				offsetX = x;
+				offsetY = y;
+				cache = areas[area];
+				this.area = area;
+				this.width = world.GetAreaWidth();
+				this.height = world.GetAreaHeight();
+				error = false;
+			}
+
+			public bool Step()
+			{
+				offsetX += dirX;
+				offsetY += dirY;
+				bool moveArea = false;
+				if (offsetX < 0)
+				{
+					offsetX = width - 1;
+					moveArea = true;
+				}
+				else if (offsetY < 0)
+				{
+					offsetY = height - 1;
+					moveArea = true;
+				}
+				else if (offsetX >= 0)
+				{
+					offsetX = 0;
+					moveArea = true;
+				}
+				else if (offsetY >= height)
+				{
+					offsetY = 0;
+					moveArea = true;
+				}
+
+
+
+				if (moveArea)
+				{
+					var tupleArea = world.GetArea(area, dir);
+					if (!tupleArea.Item1)
+					{
+						error = true;
+						return false;
+					}
+					cache = areas[tupleArea.Item2];
+					area = tupleArea.Item2;
+				}
+
+				return true;
+			}
+
+			public int Get()
+			{
+				return cache.Get(offsetX, offsetY);
+			}
+
+			public N CreateNode()
+			{
+				return world.CreateNode(area, offsetX, offsetY);
+			}
+
+			public AreaOffset ChangeDirection(TileDirection dir)
+			{
+				return new AreaOffset(areas, world, area, offsetX, offsetY, dir);
+			}
+
+			public TileDirection GetDirection()
+			{
+				return this.dir;
+			}
+
+			public bool StepFailed()
+			{
+				return error;
+			}
+
+			public AreaOffset Copy()
+			{
+				return new AreaOffset(areas, world, area, offsetX, offsetY, dir);
+			}
+		}
+
+		Tuple<bool, N> LineRaycast(AreaOffset areaOffset)
 		{
-			var now = n;
+			
 			while (true)
 			{
-				if (world.IsBlocked(now, direction))
+				var v = areaOffset.Get();
+				if (v == CacheArea.SUBGOAL)
 				{
-					return new Tuple<bool, N>(false, default(N));
+					return new Tuple<bool, N>(true, areaOffset.CreateNode());
+				}
+				if (v == CacheArea.BLOCKED)
+				{
+					break;
+				}
+				if(!areaOffset.Step())
+				{
+					break;
+				}
+			}
+			return new Tuple<bool,N>(false, default(N));
+		}
+
+		IEnumerable<N> DiagonalRaycast(AreaOffset areaOffset)
+		{
+			while (true)
+			{
+				var v = areaOffset.Get();
+				if (v == CacheArea.BLOCKED)
+				{
+					break;
+				}
+				else if (v == CacheArea.SUBGOAL)
+				{
+					yield return areaOffset.CreateNode();
+					break;
 				}
 				else
 				{
-					now = world.GetTile(now, direction);
-					if (IsSubGoal(now))
+					var diags = TileDirectionUtils.SplitDiagonal(areaOffset.GetDirection());
+
+					// If the LineRaycasts hit a blocked on first, we should break as we cannot step diagonally then
+					bool shouldBreak = false;
+					foreach(var dia in diags)
 					{
-						return new Tuple<bool, N>(true, now);
+						var nao = areaOffset.ChangeDirection(dia);
+						if (nao.Step())
+						{
+							if (nao.Get() == CacheArea.BLOCKED)
+							{
+								shouldBreak = true;
+							}
+							var ret = LineRaycast(nao);
+							if (ret.Item1)
+							{
+								yield return ret.Item2;
+							}
+						}
+					}
+					if(shouldBreak)
+					{
+						break;
+					}
+					if(!areaOffset.Step())
+					{
+						break;
 					}
 				}
 			}
@@ -164,58 +449,76 @@ namespace Lanboost.PathFinding.GraphBuilders
 
 		List<N> FindSubGoalLinks(N n)
 		{
-			if(world.IsBlocked(n, TileDirection.None))
+
+			AreaOffset areaOffset;
+			// This is needed because bad programming...
+			if (areaOffset.Get() == CacheArea.BLOCKED)
 			{
 				return new List<N>();
 			}
 
 			List<N> subGoals = new List<N>();
 
-			foreach (var dir in tileDirections)
+			AreaOffset[] lineAreaOffsets = new AreaOffset[]
 			{
-				var now = n;
-				while (true)
+				areaOffset.ChangeDirection(TileDirection.Top),
+				areaOffset.ChangeDirection(TileDirection.Right),
+				areaOffset.ChangeDirection(TileDirection.Bottom),
+				areaOffset.ChangeDirection(TileDirection.Left)
+			};
+
+			foreach(var v in lineAreaOffsets)
+			{
+				v.Step();
+			}
+
+			int[][] lineAreaOffsetIndex = new int[][]{
+				new int[] { 0,1},
+				new int[] { 1,2},
+				new int[] { 2,3},
+				new int[] { 3,0}
+			};
+
+			TileDirection[] lineAreaOffsetIndexDirection = new TileDirection[]
+			{
+				TileDirection.TopRight,
+				TileDirection.BottomRight,
+				TileDirection.BottomLeft,
+				TileDirection.TopLeft
+			};
+
+
+			for(int i=0; i< lineAreaOffsetIndexDirection.Length; i++)
+			{
+				var failed = false;
+				foreach(var v in lineAreaOffsetIndex[i])
 				{
-					if (world.IsBlocked(now, dir[0]) || world.IsBlocked(now, dir[1]) || world.IsBlocked(now, dir[2]))
+					if(lineAreaOffsets[v].StepFailed() || lineAreaOffsets[v].Get() == CacheArea.BLOCKED)
 					{
+						failed = true;
 						break;
 					}
-					else
+				}
+				if(!failed)
+				{
+					foreach(var v in DiagonalRaycast(areaOffset.ChangeDirection(lineAreaOffsetIndexDirection[i])))
 					{
-						now = world.GetTile(now, dir[0]);
-
-						if (IsSubGoal(now))
-						{
-							subGoals.Add(now);
-							break;
-						}
-						else
-						{
-
-							for (int i = 1; i < dir.Length; i++)
-							{
-								var r = Raycast(now, dir[i]);
-								if (r.Item1)
-								{
-									subGoals.Add(r.Item2);
-								}
-							}
-						}
+						subGoals.Add(v);
 					}
 				}
 			}
 
-			var tDirs = new TileDirection[]
-			{
-				TileDirection.Top, TileDirection.Right, TileDirection.Bottom, TileDirection.Left
-			};
+			//This have to be done last, as otherwise we will change the underlying datastructure
 
-			for (int i = 0; i < tDirs.Length; i++)
+			foreach (var v in lineAreaOffsets)
 			{
-				var r = Raycast(n, tDirs[i]);
-				if (r.Item1)
+				if(!v.StepFailed())
 				{
-					subGoals.Add(r.Item2);
+					var vv = LineRaycast(v);
+					if(vv.Item1)
+					{
+						subGoals.Add(vv.Item2);
+					}
 				}
 			}
 
@@ -236,12 +539,18 @@ namespace Lanboost.PathFinding.GraphBuilders
 			return new Tuple<List<Edge<N, L>>, Dictionary<N, Edge<N, L>>>(item1List, item2Dict);
 		}
 
-		bool IsSubGoal(N tile)
+		bool IsSubGoalNoCache(CacheArea area, int x, int y)
 		{
-
-			foreach (var dir in tileDirections)
+			if(area.Get(x,y) == CacheArea.BLOCKED)
 			{
-				if (!world.IsBlocked(tile, TileDirection.None) && world.IsBlocked(tile, dir[0]) && !world.IsBlocked(tile, dir[1]) && !world.IsBlocked(tile, dir[2]))
+				return false;
+			}
+
+			foreach (var dir in subGoalOffsets)
+			{
+				if (area.Get(x+ dir[0][0], y + dir[0][1]) == CacheArea.BLOCKED &&
+					area.Get(x + dir[1][0], y + dir[1][1]) != CacheArea.BLOCKED &&
+					area.Get(x + dir[2][0], y + dir[2][1]) != CacheArea.BLOCKED)
 				{
 					return true;
 				}
@@ -249,25 +558,98 @@ namespace Lanboost.PathFinding.GraphBuilders
 			return false;
 		}
 
-		public IEnumerable<N> BuilderGetNodes()
+		void dirtySurroundingAreas(Position area)
 		{
-			foreach (var tile in world.BuilderGetTiles())
+			TileDirection[] dirs = new TileDirection[]
 			{
-				if (IsSubGoal(tile))
+				TileDirection.Top,
+				TileDirection.TopRight,
+				TileDirection.Right,
+				TileDirection.BottomRight,
+				TileDirection.Bottom,
+				TileDirection.BottomLeft,
+				TileDirection.Left,
+				TileDirection.TopLeft
+			};
+
+			int[] dirtyFlags = new int[]
+			{
+				CacheArea.DIRTY_BOTTOM,
+				CacheArea.DIRTY_BOTTOM, // The diagional does not matter
+				CacheArea.DIRTY_LEFT,
+				CacheArea.DIRTY_TOP,
+				CacheArea.DIRTY_TOP,
+				CacheArea.DIRTY_TOP,
+				CacheArea.DIRTY_RIGHT,
+				CacheArea.DIRTY_BOTTOM,
+			};
+
+			for (int i = 0; i < dirs.Length; i++)
+			{
+				var a = world.GetArea(area, dirs[i]);
+				if (a != null)
 				{
-					yield return tile;
+					SetDirty(a, dirtyFlags[i]);
 				}
 			}
 		}
 
-		public int GetCost(L link)
+		public void CleanDirtyAreas()
 		{
-			return world.GetCost(link);
+			while(true)
+			{
+
+			}
+		}
+
+		public void UnloadArea(Position area)
+		{
+			areas.Remove(area);
+
+			dirtySurroundingAreas(area);
+		}
+
+		public void UpdateCacheEdges(CacheArea area)
+		{
+			//world.GetArea(area, TileDirection.Top);
+		}
+
+		public List<N> LoadArea(Position area)
+		{
+			var cache = new CacheArea(width, height);
+			areas.Add(area, cache);
+
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					var blocked = world.IsBlocked(area, x, y);
+					if (blocked)
+					{
+						cache.Set(x, y, 1);
+					}
+					else
+					{
+						cache.Set(x, y, 0);
+					}
+				}
+			}
+
+
+			dirtySurroundingAreas(area);
+			SetDirty(area, CacheArea.DIRTY_ALL);
+
+			return nodes;
+		}
+
+		public int GetCost(N from, N to, L link)
+		{
+			return world.GetCost(from, to, link);
 		}
 
 		public int GetEstimation(N from, N to)
 		{
 			return world.GetEstimation(from, to);
 		}
-	}
+	}*/
 }

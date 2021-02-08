@@ -2,7 +2,6 @@
 using Lanboost.PathFinding.Astar;
 using Lanboost.PathFinding.Graph;
 using Lanboost.PathFinding.GraphBuilders;
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,6 +21,10 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 	public GameObject tilemapParent;
 	public GameObject gameObjectWorldLine;
 	public Button modebutton;
+	public Button addPortal;
+	public Button clearPortal;
+	public Button addGlobal;
+	public Button clearGlobal;
 	[System.NonSerialized]
 	public Tilemap[] tileMap;
 
@@ -42,15 +45,30 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 	bool[][] grid;
 	TileGraph tileGraph;
 	GridWorld gridWorld;
-
-	Vector3Int start;
-	Vector3Int end;
+	public static Vector3Int Vector3IntNotSet = new Vector3Int(-1, -1, -1);
+	Vector3Int start = Vector3IntNotSet;
+	Vector3Int end  = Vector3IntNotSet;
+	Vector3Int subgoalExplore = Vector3IntNotSet;
 
 	AStar<Position, Edge> aStar;
-	AStar<Position, Edge> directedAStar;
-	DynamicDirectedGraph<Position, Edge> directedGraph;
+	AStar<Position, SimpleEdge<int>> directedAStar;
+	SubgoalGraph2D<int> directedGraph;
+
+	PortalExtender pe = new PortalExtender();
+	GlobalExtender ge = new GlobalExtender();
 
 	int mode = 0;
+
+	string[] modeNames = new string[]
+	{
+		"None [red = blocked, green = open]",
+		"Subgoals [red = blocked, green = open, black = subgoals]",
+		"distance map (North) [red = blocked, black = subgoals, blue = distanceType blocked, green = distanceType subgoal]",
+		"distance map (East)",
+		"distance map (South)",
+		"distance map (West)",
+		"distance map (West)",
+	};
 	
 	public void Start()
 	{
@@ -59,9 +77,42 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 		modebutton.onClick.AddListener(delegate ()
 		{
 			this.mode += 1;
-			this.mode %= 2;
+			this.mode %= (modeNames.Length-1);
 			RenderFloor(0);
 			
+		});
+
+		addPortal.onClick.AddListener(delegate ()
+		{
+			var p1 = findFreePosition();
+			var p2 = findFreePosition();
+
+			pe.Add(p1, p2);
+
+			createSubgoalGraph();
+		});
+
+		clearPortal.onClick.AddListener(delegate ()
+		{
+			pe.Clear();
+
+			createSubgoalGraph();
+		});
+
+		addGlobal.onClick.AddListener(delegate ()
+		{
+			var p1 = findFreePosition();
+
+			ge.Add(p1);
+
+			createSubgoalGraph();
+		});
+
+		clearGlobal.onClick.AddListener(delegate ()
+		{
+			ge.Clear();
+
+			createSubgoalGraph();
 		});
 
 		tileMap = new Tilemap[14];
@@ -76,6 +127,18 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 			}
 		}
 		Generate();
+	}
+
+	Position findFreePosition()
+	{
+		for (int i = 0; i < 1000; i++) {
+			var r = new Position((int)Random.Range(0, gridWorld.GetChunkSize()), (int)Random.Range(0, gridWorld.GetChunkSize()), 0);
+			if(!gridWorld.GetBlocked(r))
+			{
+				return r;
+			}
+		}
+		return new Position(0, 0, 0);
 	}
 
 	public void Generate()
@@ -106,19 +169,36 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 
 		tileGraph = new TileGraph(grid);
 		gridWorld = new GridWorld(grid);
-		aStar = new AStar<Position, Edge>(tileGraph, 10000);
 
-		directedGraph = new DynamicDirectedGraph<Position, Edge>(new SubGoalGraphBuilder2D<Position, Edge>(gridWorld));
-		directedGraph.Load();
+		createSubgoalGraph();
+	}
 
-		directedAStar = new AStar<Position, Edge>(directedGraph, 10000);
+	public void createSubgoalGraph()
+	{
+		var ed = new List<Lanboost.PathFinding.Graph.Graph2DExtender<int>>();
+		ed.Add(pe);
+		ed.Add(ge);
+		directedGraph = new SubgoalGraph2D<int>(gridWorld, ed);
+		
+		try
+		{
+			directedGraph.Create();
+		}
+		catch (System.Exception e) { Debug.Log(e); }
+
+		directedAStar = new AStar<Position, SimpleEdge<int>>(directedGraph, 10000);
 		RenderFloor(0);
 	}
 
 	public void GeneratePath()
 	{
-		Debug.Log("Astar result: "+aStar.FindPath(new Position(start.x, start.y), new Position(end.x, end.y)));
-		Debug.Log("Astar directedGraph result: " + directedAStar.FindPath(new Position(start.x, start.y), new Position(end.x, end.y)));
+		//Debug.Log("Astar result: "+aStar.FindPath(new Position(start.x, start.y), new Position(end.x, end.y)));
+
+		if (start != Vector3IntNotSet && end != Vector3IntNotSet)
+		{
+			Debug.Log("Astar directedGraph result: " + directedAStar.FindPath(new Position(start.x, start.y), new Position(end.x, end.y)));
+			Debug.Log(directedAStar.GetCost(new Position(end.x, end.y)));
+		}
 	}
 
 	public void RenderFloor(int floor)
@@ -140,14 +220,32 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 			}
 		}
 
-		if (mode == 1)
+		foreach(var v in pe.edges)
+		{
+			{
+				var p = v.Key;
+				tileMap[TILEMAP_GAMEOBJECT].SetTile(new Vector3Int(p.x, p.y, 0), tiles[7]);
+			}
+			{
+				var p = v.Value;
+				tileMap[TILEMAP_GAMEOBJECT].SetTile(new Vector3Int(p.x, p.y, 0), tiles[7]);
+			}
+		}
+		foreach (var p in ge.positions)
+		{
+			{
+				tileMap[TILEMAP_GAMEOBJECT].SetTile(new Vector3Int(p.x, p.y, 0), tiles[6]);
+			}
+		}
+
+		/*if (mode == 1)
 		{
 			gameObjectWorldLine.SetActive(false);
 			var path = aStar.GetPath();
 
 			foreach (var p in path)
 			{
-				tileMap[TILEMAP_GAMEOBJECT].SetTile(new Vector3Int(p.first.x, p.first.y, 0), tiles[4]);
+				tileMap[TILEMAP_GAMEOBJECT].SetTile(new Vector3Int(p.x, p.y, 0), tiles[4]);
 			}
 		}
 		else
@@ -165,27 +263,112 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 				List<Vector3> pos = new List<Vector3>();
 				foreach (var p in path)
 				{
-					lineRenderer.line.Push(new Vector3(p.first.x + 0.5f, p.first.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
+					lineRenderer.line.Push(new Vector3(p.x + 0.5f, p.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
 				}
 				if (path.Count > 0)
 				{
 					var last = path[path.Count - 1];
-					lineRenderer.line.Push(new Vector3(last.second.x + 0.5f, last.second.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
+					lineRenderer.line.Push(new Vector3(last.x + 0.5f, last.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
 				}
+		}*/
+		try
+		{
+			var path = directedAStar.GetPath();
+
+			var lineRenderer = GameObject.FindObjectOfType<WorldLine>();
+			lineRenderer.line.Clear();
+			List<Vector3> pos = new List<Vector3>();
+
+			lineRenderer.line.Push(new Vector3(start.x + 0.5f, start.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
+			foreach (var p in path)
+			{
+				lineRenderer.line.Push(new Vector3(p.x + 0.5f, p.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
+			}
+			if (path.Count > 0)
+			{
+				//var last = path[path.Count - 1];
+				//lineRenderer.line.Push(new Vector3(last.x + 0.5f, last.y + 0.5f, -1), Vector3.zero, Vector3.zero, 0.5f);
+			}
 		}
+		catch
+		{
 
-		tileMap[TILEMAP_MOUSE].ClearAllTiles();
-		tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(start.x, start.y, 0), tiles[1]);	
-		tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(end.x, end.y, 0), tiles[2]);
-
+		}
 
 		if (mode == 1)
 		{
-			positionText.text = "Standard Astar";
+			var v = directedGraph.areas[new Position(0, 0, 0)];
+			for (int y = 0; y < grid.Length; y++)
+			{
+				for (int x = 0; x < grid[y].Length; x++)
+				{
+					var t = (TileBase)GameObject.FindObjectOfType<FontTileLoader>().tiles[GameObject.FindObjectOfType<FontTileLoader>().tiles.Length - 1];
+
+					t = tiles[0];
+					if (v.Get(x, y) == SubGoal2DChunk.TYPE_BLOCKED)
+					{
+						t = tiles[3];
+					}
+					else if (v.Get(x, y) == SubGoal2DChunk.TYPE_SUBGOAL)
+					{
+						t = tiles[1];
+					}
+					tileMap[TILEMAP_MOUSEOVERLAY].SetTile(new Vector3Int(x, y, 0), t);
+				}
+			}
 		}
-		else
+		else if (mode >= 2)
 		{
-			positionText.text = "SubGoal mode";
+
+			
+
+			var v = directedGraph.areas[new Position(0, 0, 0)];
+			for (int y = 0; y < grid.Length; y++)
+			{
+				for (int x = 0; x < grid[y].Length; x++)
+				{
+					TileBase t = null;
+					var vv = v.GetDistance(x, y, mode-2);
+					if (vv < GameObject.FindObjectOfType<FontTileLoader>().tiles.Length - 1)
+					{
+						t = GameObject.FindObjectOfType<FontTileLoader>().tiles[vv];
+					}
+					tileMap[TILEMAP_MOUSEOVERLAY].SetTile(new Vector3Int(x, y, 0), t);
+				}
+			}
+		}
+
+
+
+		positionText.text = modeNames[mode];
+
+	}
+
+	public void RenderMouse()
+	{
+		tileMap[TILEMAP_MOUSE].ClearAllTiles();
+		if (start != Vector3IntNotSet)
+		{
+			tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(start.x, start.y, 0), tiles[1]);
+		}
+		if (end != Vector3IntNotSet)
+		{
+			tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(end.x, end.y, 0), tiles[2]);
+			RenderFloor(0);
+		}
+
+		if (subgoalExplore != Vector3IntNotSet)
+		{
+			foreach (var v in directedGraph.findSubgoalsFrom(new Position(subgoalExplore.x, subgoalExplore.y, 0), true))
+			{
+				tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(v.x, v.y, 0), tiles[2]);
+			}
+			Debug.Log("Clicked on: " + subgoalExplore.x + "," + subgoalExplore.y);
+			foreach (var v in directedGraph.findSubgoalsFrom(new Position(subgoalExplore.x, subgoalExplore.y, 0)))
+			{
+				Debug.Log("Subgoal at: " + v.x + "," + v.y);
+				tileMap[TILEMAP_MOUSE].SetTile(new Vector3Int(v.x, v.y, 0), tiles[1]);
+			}
 		}
 	}
 
@@ -265,6 +448,10 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 		{
 			start = position;
 		}
+		else if(Input.GetKey(KeyCode.LeftControl))
+		{
+			subgoalExplore = position;
+		}
 		else
 		{
 			end = position;
@@ -273,7 +460,8 @@ public class CameraMove : MonoBehaviour, IPointerClickHandler
 		Debug.Log(start);
 		Debug.Log(end);
 		GeneratePath();
-		RenderFloor(0);
+		//RenderFloor(0);
+		RenderMouse();
 	}
 }
 

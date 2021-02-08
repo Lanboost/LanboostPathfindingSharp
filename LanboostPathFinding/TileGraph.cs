@@ -9,11 +9,13 @@ namespace Lanboost.PathFinding.Graph
 	{
 		public int x;
 		public int y;
+		public int plane;
 
-		public Position(int x, int y)
+		public Position(int x, int y, int plane = 0)
 		{
 			this.x = x;
 			this.y = y;
+			this.plane = plane;
 		}
 
 		public override bool Equals(object obj)
@@ -21,7 +23,8 @@ namespace Lanboost.PathFinding.Graph
 			var position = obj as Position;
 			return position != null &&
 				   x == position.x &&
-				   y == position.y;
+				   y == position.y &&
+				   plane == position.plane;
 		}
 
 		public override int GetHashCode()
@@ -29,6 +32,7 @@ namespace Lanboost.PathFinding.Graph
 			var hashCode = 1502939027;
 			hashCode = hashCode * -1521134295 + x.GetHashCode();
 			hashCode = hashCode * -1521134295 + y.GetHashCode();
+			hashCode = hashCode * -1521134295 + plane.GetHashCode();
 			return hashCode;
 		}
 	}
@@ -60,8 +64,13 @@ namespace Lanboost.PathFinding.Graph
 			return hashCode;
 		}
 	}
+
+	public class NoEdge
+	{
+
+	}
 	
-	public class TileGraph : IGraph<Position, Edge>
+	public class TileGraph : IGraph<Position, NoEdge>
 	{
 		bool[][] grid;
 
@@ -75,12 +84,12 @@ namespace Lanboost.PathFinding.Graph
 
 		}
 
-		public int GetCost(Edge link)
+		public int GetCost(Position start, Position end, NoEdge link)
 		{
 			return 1;
 		}
 
-		public IEnumerable<Edge> GetEdges(Position node)
+		public IEnumerable<Edge<Position, NoEdge>> GetEdges(Position node)
 		{
 			var dirs = new int[][] {
 				new int[] { 0, -1 },
@@ -96,7 +105,7 @@ namespace Lanboost.PathFinding.Graph
 				{
 					if (grid[y][x])
 					{
-						yield return new Edge(node, new Position(x, y));
+						yield return new Edge<Position, NoEdge>(new Position(x, y), null);
 					}
 				}
 			}
@@ -106,18 +115,9 @@ namespace Lanboost.PathFinding.Graph
 		{
 			return Math.Abs(from.x - to.x) + Math.Abs(from.y - to.y);
 		}
-
-		public Position GetOtherNode(Position From, Edge link)
-		{
-			if (link.first.Equals(From))
-			{
-				return link.second;
-			}
-			return link.first;
-		}
 	}
 
-	public class GridWorld : ITileWorld<Position, Edge>
+	public class GridWorld : ITileWorld<Position, Edge>, World2D
 	{
 		bool[][] grid;
 		int[][] offset = new int[][]
@@ -154,7 +154,28 @@ namespace Lanboost.PathFinding.Graph
 			return new Edge(from, to);
 		}
 
-		public int GetCost(Edge link)
+		public IEnumerable<bool> GetChunkBlocedPositions(Position chunk)
+		{
+			for (int y = 0; y < grid.Length; y++)
+			{
+				for (int x = 0; x < grid[y].Length; x++)
+				{
+					yield return !grid[y][x];
+				}
+			}
+		}
+
+		public IEnumerable<Position> GetChunks()
+		{
+			yield return new Position(0, 0, 0);
+		}
+
+		public int GetChunkSize()
+		{
+			return this.grid.Length;
+		}
+
+		public int GetCost(Position p1, Position p2, Edge link)
 		{
 			var from = link.first;
 			var to = link.second;
@@ -164,6 +185,11 @@ namespace Lanboost.PathFinding.Graph
 		public int GetEstimation(Position from, Position to)
 		{
 			return Math.Abs(from.x - to.x) + Math.Abs(from.y - to.y);
+		}
+
+		public bool GetBlocked(Position p)
+		{
+			return !grid[p.y][p.x];
 		}
 
 		public Position GetTile(Position p, TileDirection d)

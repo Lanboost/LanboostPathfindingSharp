@@ -8,4 +8,8 @@
     <PackageReference Include="OptimizedPriorityQueue" Version="5.0.0" />
   </ItemGroup>
 
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="xcopy /y /d &quot;$(ProjectDir)$(OutDir)LanboostPathFinding.dll&quot; &quot;C:/Users/Lanboost/source/repos/LanboostPathFinding/UnityExample/PathFinderExample/Assets/LanboostPathFinding.dll&quot;" />
+  </Target>
+
 </Project>

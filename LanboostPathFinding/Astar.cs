@@ -17,7 +17,8 @@ namespace Lanboost.PathFinding.Astar
 	public class AStar<N, L> : IPathFinder<N, L>
 	{
 		SimplePriorityQueue<N> priorityQueue = new SimplePriorityQueue<N>();
-		Dictionary<N, L> parent = new Dictionary<N, L>();
+		Dictionary<N, L> parentLink = new Dictionary<N, L>();
+		Dictionary<N, N> parentNode = new Dictionary<N, N>();
 		Dictionary<N, int> cost = new Dictionary<N, int>();
 		IGraph<N, L> graph;
 		int maxExpansions;
@@ -34,19 +35,43 @@ namespace Lanboost.PathFinding.Astar
 			this.graph = graph;
 		}
 
+		public int GetCost(N n)
+		{
+			return cost[n];
+		}
+
 		/// <summary>
-		/// Get the path found in last search.
+		/// Get the path of links found in last search.
 		/// </summary>
 		/// <returns>A list of <c>IEdge</c>'s traversed in the path.</returns>
-		public List<L> GetPath()
+		public List<L> GetPathLinks()
 		{
 			List<L> temp = new List<L>();
 			var keyNow = End;
-			while (parent.ContainsKey(keyNow))
+			while (parentNode.ContainsKey(keyNow))
 			{
-				temp.Add(parent[keyNow]);
-				keyNow = graph.GetOtherNode(keyNow, parent[keyNow]);
+				temp.Add(parentLink[keyNow]);
+				keyNow = parentNode[keyNow];
 			}
+			temp.Reverse();
+			return temp;
+		}
+
+		/// <summary>
+		/// Get the path of nodes found in last search.
+		/// </summary>
+		/// <returns>A list of <c>IEdge</c>'s traversed in the path.</returns>
+		public List<N> GetPath()
+		{
+			List<N> temp = new List<N>();
+			var keyNow = End;
+			temp.Add(keyNow);
+			while (parentNode.ContainsKey(keyNow))
+			{
+				temp.Add(parentNode[keyNow]);
+				keyNow = parentNode[keyNow];
+			}
+			temp.Add(keyNow);
 			temp.Reverse();
 			return temp;
 		}
@@ -65,7 +90,8 @@ namespace Lanboost.PathFinding.Astar
 			}
 
 			this.End = End;
-			parent.Clear();
+			parentLink.Clear();
+			parentNode.Clear();
 			cost.Clear();
 			priorityQueue.Clear();
 			this.graph.AddTemporaryStartEndNodes(Start, End);
@@ -96,20 +122,23 @@ namespace Lanboost.PathFinding.Astar
 
 				foreach (var n in adjacencies)
 				{
-					var edgeNode = graph.GetOtherNode(current, n);
-					var pathCost = graph.GetCost(n);
+					var link = n.link;
+					var edgeNode = n.to;
+					var pathCost = graph.GetCost(current, edgeNode, link);
 					var totalCost = mycost + pathCost;
-					if (!edgeNode.Equals(Start) && !parent.ContainsKey(edgeNode) || totalCost < cost[edgeNode])
+					if (!edgeNode.Equals(Start) && !parentNode.ContainsKey(edgeNode) || totalCost < cost[edgeNode])
 					{
-						if (!parent.ContainsKey(edgeNode))
+						if (parentNode.ContainsKey(edgeNode))
 						{
-							parent.Add(edgeNode, n);
-							cost.Add(edgeNode, totalCost);
+							parentNode[edgeNode] = current;
+							parentLink[edgeNode] = link;
+							cost[edgeNode] = totalCost;
 						}
 						else
 						{
-							parent[edgeNode] = n;
-							cost[edgeNode] = totalCost;
+							parentNode.Add(edgeNode, current);
+							parentLink.Add(edgeNode, link);
+							cost.Add(edgeNode, totalCost);
 						}
 
 						int heu = totalCost + graph.GetEstimation(edgeNode, End);
