@@ -35,7 +35,13 @@ namespace Lanboost.PathFinding.Graph
 			hashCode = hashCode * -1521134295 + plane.GetHashCode();
 			return hashCode;
 		}
-	}
+
+        public override string ToString()
+        {
+            return $"Position({this.x}, {this.y}, {this.plane})";
+
+		}
+    }
 
 	public class Edge
 	{
@@ -165,7 +171,22 @@ namespace Lanboost.PathFinding.Graph
 			}
 		}
 
-		public IEnumerable<Position> GetChunks()
+        public Position GetFirstFreePosition()
+        {
+            for (int y = 0; y < grid.Length; y++)
+            {
+                for (int x = 0; x < grid[y].Length; x++)
+                {
+                    if(grid[y][x])
+					{
+                        return new Position(x, y, 0);
+                    }
+                }
+            }
+			return new Position(0, 0, 0);
+        }
+
+        public IEnumerable<Position> GetChunks()
 		{
 			yield return new Position(0, 0, 0);
 		}
@@ -189,7 +210,11 @@ namespace Lanboost.PathFinding.Graph
 
 		public bool GetBlocked(Position p)
 		{
-			return !grid[p.y][p.x];
+			if (p.x >= 0 && p.y >= 0 && p.y < grid.Length && p.x < grid[p.y].Length)
+			{
+				return !grid[p.y][p.x];
+			}
+			return true;
 		}
 
 		public Position GetTile(Position p, TileDirection d)
