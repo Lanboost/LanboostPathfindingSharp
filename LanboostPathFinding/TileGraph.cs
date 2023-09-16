@@ -17,8 +17,9 @@ namespace Lanboost.PathFinding.Graph
 			this.y = y;
 			this.plane = plane;
 		}
+        public static Position operator +(Position a, Position b) => new Position(a.x+b.x, a.y+b.y,a.plane+b.plane);
 
-		public override bool Equals(object obj)
+        public override bool Equals(object obj)
 		{
 			var position = obj as Position;
 			return position != null &&

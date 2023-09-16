@@ -21,8 +21,25 @@ namespace Lanboost.PathFinding.GraphBuilders
 
 	public class TileDirectionUtils
 	{
+		/* Directions that are not diagonal */
+		public static TileDirection[] OrthogonalDirections = new TileDirection[]
+		{
+			TileDirection.Top,
+			TileDirection.Right,
+			TileDirection.Bottom,
+			TileDirection.Left
+		};
 
-		public static int Opposite(TileDirection dir)
+        public static TileDirection[] DiagonalDirections = new TileDirection[]
+        {
+            TileDirection.TopRight,
+            TileDirection.BottomRight,
+            TileDirection.BottomLeft,
+            TileDirection.TopLeft
+        };
+
+
+        public static int Opposite(TileDirection dir)
 		{
 			var t = new int[] {
 				4,
@@ -36,20 +53,21 @@ namespace Lanboost.PathFinding.GraphBuilders
 			return t[(int)dir];
 		}
 
-		public static int[] TileDirectionOffset(TileDirection dir)
+		private static int[][] _TileDirectionOffset = new int[][] {
+                new int[] { 0, 1 },
+                new int[] { 1, 1 },
+                new int[] { 1, 0 },
+                new int[] { 1, -1 },
+                new int[] { 0, -1 },
+                new int[] { -1, -1 },
+                new int[] { -1, 0 },
+                new int[] { -1, 1 },
+                new int[] { 0, 0 }
+           };
+
+        public static int[] TileDirectionOffset(TileDirection dir)
 		{
-			var t = new int[][] {
-				new int[] { 0, 1 },
-				new int[] { 1, 1 },
-				new int[] { 1, 0 },
-				new int[] { 1, -1 },
-				new int[] { 0, -1 },
-				new int[] { -1, -1 },
-				new int[] { -1, 0 },
-				new int[] { -1, 1 },
-				new int[] { 0, 0 }
-			};
-			return t[(int)dir];
+			return _TileDirectionOffset[(int)dir];
 		}
 
 		public static TileDirection[] SplitDiagonal(TileDirection dir)

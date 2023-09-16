@@ -1,5 +1,3 @@
-#define ENABLE_PATH_STEPS
-
 using Godot;
 using System;
 using Lanboost.PathFinding.Graph;
@@ -15,7 +13,7 @@ public class TestTileMap : TileMap
 
 	bool drawing = false;
 	bool clearing = false;
-    int SIZE_X = 64;
+    int SIZE_X = 51;
     int SIZE_Y = 35;
     Random random = new Random();
     TileGraph tileGraph = null;
@@ -32,6 +30,12 @@ public class TestTileMap : TileMap
     Position start;
     Position end;
 
+    int currentStep = -1;
+    List<Line2D> highlightLines = new List<Line2D>();
+
+
+    public static String NODE_PLAYER = "../Player";
+    public static String NODE_STEP_LABEL = "../RightPanel/VBox/StepLabel";
 
     // Declare member variables here. Examples:
     // private int a = 2;
@@ -48,7 +52,7 @@ public class TestTileMap : TileMap
         }
 
         var pos = FindFreePosition();
-        var player = GetNode<Node2D>("../Player");
+        var player = GetNode<Node2D>(NODE_PLAYER);
         player.Position = MapToWorld(new Vector2(pos.x, pos.y));
         start = pos;
         end = FindFreePosition();
@@ -58,7 +62,170 @@ public class TestTileMap : TileMap
             watch.Stop();
             GD.Print($"createSubgoalGraph in: {watch.ElapsedMilliseconds} ms");
         }
-        GenerateAndShowPath();
+        //GenerateAndShowPath();
+    }
+
+    public void RenderNextStep()
+    {
+        currentStep++;
+        RenderStep();
+    }
+
+    public void RenderPreviousStep()
+    {
+        UndoStep();
+        currentStep--;
+        RenderStep();
+    }
+
+    public void RenderNextMainStep()
+    {
+        var currentStepStr = (currentStep >= 0 && currentStep < directedGraph.generationSteps.Count) ? directedGraph.generationSteps[currentStep].Step : null;
+        
+        while(true)
+        {
+
+            currentStep++;
+            var newStepStr = (currentStep >= 0 && currentStep < directedGraph.generationSteps.Count) ? directedGraph.generationSteps[currentStep].Step : null;
+
+            if(currentStepStr != newStepStr || newStepStr == null)
+            {
+
+                RenderStep();
+                break;
+            }
+
+            RenderStep(true, true);
+        }
+    }
+
+    public void UndoStep()
+    {
+        if (currentStep >= 0 && currentStep < directedGraph.generationSteps.Count)
+        {
+            var step = directedGraph.generationSteps[currentStep];
+            foreach (var tileData in step.tileDatas)
+            {
+                if (tileData.prevHighLightForm == HighLightForm.NONE)
+                {
+                    GetNode<TileMap>("GraphTileMap").SetCell(tileData.position.x, tileData.position.y, -1);
+                }
+                else
+                {
+                    GetNode<TileMap>("GraphTileMap").SetCell(
+                        tileData.position.x, 
+                        tileData.position.y, 
+                        0, 
+                        autotileCoord: new Vector2((int)tileData.prevHighLightForm, (int)tileData.prevHighLightType)
+                    );
+                }
+            }
+        }
+    }
+
+    public void RenderStep(bool skipText = false, bool skipLines = false)
+    {
+        foreach(var line in highlightLines )
+        {
+            line.QueueFree();
+        }
+        highlightLines.Clear();
+
+        if (currentStep >= 0 && currentStep < directedGraph.generationSteps.Count) {
+            var step = directedGraph.generationSteps[currentStep];
+            if (!skipText)
+            {
+                GetNode<Label>(NODE_STEP_LABEL).Text = $"Step: {currentStep + 1} / {directedGraph.generationSteps.Count}\n{step.Step}\n{step.SubStep}";
+            }
+            if (!skipLines)
+            {
+                foreach (var highlight in step.highLights)
+                {
+                    var line = new Line2D();
+                    var start = highlight.start;
+                    var end = start + new Position(1, 1, 0);
+                    if (highlight.end != null)
+                    {
+                        end = highlight.end;
+                    }
+                    line.Points = new Vector2[]
+                    {
+                        MapToWorld(new Vector2(start.x, start.y)),
+                        MapToWorld(new Vector2(end.x, start.y)),
+                        MapToWorld(new Vector2(end.x, end.y)),
+                        MapToWorld(new Vector2(start.x, end.y)),
+                        MapToWorld(new Vector2(start.x, start.y)),
+                        MapToWorld(new Vector2(end.x, start.y))
+                    };
+                    line.ZIndex = 100;
+                    if (highlight.highLightColor == HighLightColor.RED)
+                    {
+                        line.DefaultColor = Colors.Red;
+                    }
+                    if (highlight.highLightColor == HighLightColor.GREEN)
+                    {
+                        line.DefaultColor = Colors.Green;
+                    }
+                    if (highlight.highLightColor == HighLightColor.YELLOW)
+                    {
+                        line.DefaultColor = Colors.Yellow;
+                    }
+                    if (highlight.highLightColor == HighLightColor.BLUE)
+                    {
+                        line.DefaultColor = Colors.Blue;
+                    }
+
+                    line.Width = 2;
+                    GetNode<TileMap>("OverlayTileMap").AddChild(line);
+
+                    /*var pathRenderer = GetNode<Line2D>("Line2D");
+                    pathRenderer.Points = new Vector2[]
+                    {
+                        MapToWorld(new Vector2(start.x, start.y)),
+                        MapToWorld(new Vector2(end.x, start.y)),
+                        MapToWorld(new Vector2(end.x, end.y)),
+                        MapToWorld(new Vector2(start.x, end.y)),
+                        MapToWorld(new Vector2(start.x, start.y))
+                    };*/
+
+                    highlightLines.Add(line);
+                }
+            }
+
+            foreach (var tileData in step.tileDatas)
+            {
+                if (!tileData.prev) {
+                    var cell = GetNode<TileMap>("GraphTileMap").GetCell(tileData.position.x, tileData.position.y);
+                    if (cell == -1)
+                    {
+                        tileData.prevHighLightForm = HighLightForm.NONE;
+                    }
+                    else
+                    {
+                        var autoTileCoord = GetNode<TileMap>("GraphTileMap").GetCellAutotileCoord(tileData.position.x, tileData.position.y);
+                        // TODO
+                        tileData.prevHighLightForm = (HighLightForm)autoTileCoord.x;
+                        tileData.prevHighLightType = (HighLightColor)autoTileCoord.y;
+                    }
+                    tileData.prev = true;
+                }
+                
+
+                if (tileData.highLightForm == HighLightForm.NONE) {
+                    GetNode<TileMap>("GraphTileMap").SetCell(tileData.position.x, tileData.position.y, -1);
+                }
+                else
+                {
+                    GetNode<TileMap>("GraphTileMap").SetCell(tileData.position.x, tileData.position.y, 0, autotileCoord:new Vector2((int)tileData.highLightForm, (int)tileData.highLightColor));
+                }
+            }
+
+        }
+        else
+        {
+            
+            GetNode<Label>(NODE_STEP_LABEL).Text = $"Step: {currentStep+1} / {directedGraph.generationSteps.Count}\nDone";
+        }
     }
 
     public void GenerateAndShowPath()
@@ -120,13 +287,9 @@ public class TestTileMap : TileMap
         ed.Add(ge);
         directedGraph = new SubgoalGraph2D<int>(gridWorld, ed);
 
-        try
-        {
-            directedGraph.Create();
-        }
-        catch (System.Exception e) { 
-            //Debug.Log(e); 
-        }
+        
+        directedGraph.Create();
+        
 
         directedAStar = new AStar<Position, SimpleEdge<int>>(directedGraph, 10000);
         //RenderFloor(0);
@@ -213,7 +376,7 @@ public class TestTileMap : TileMap
             {
                 if (Input.IsKeyPressed((int)KeyList.Shift) && eeevent.ButtonIndex == (int)ButtonList.Left && eeevent.Pressed)
                 {
-                    drawing = true;
+                    //drawing = true;
                 }
                 else if (eeevent.ButtonIndex == (int)ButtonList.Left && eeevent.Pressed)
                 {
@@ -228,8 +391,17 @@ public class TestTileMap : TileMap
 
                 if (Input.IsKeyPressed((int)KeyList.Shift) && eeevent.ButtonIndex == (int)ButtonList.Right && eeevent.Pressed)
                 {
-                    clearing = true;
+                    //clearing = true;
                 }
+                else if (eeevent.ButtonIndex == (int)ButtonList.Right && eeevent.Pressed)
+                {
+                    var pos = WorldToMap(eeevent.Position);
+                    var player = GetNode<Node2D>(NODE_PLAYER);
+                    player.Position = MapToWorld(new Vector2(pos.x, pos.y));
+                    start = new Position((int)pos.x, (int)pos.y);
+                    GenerateAndShowPath();
+                }
+
                 if (eeevent.ButtonIndex == (int)ButtonList.Right && !eeevent.Pressed)
                 {
                     clearing = false;
@@ -264,9 +436,41 @@ public class TestTileMap : TileMap
                 }
             }
         }
+        {
+            if (eevent is InputEventKey eeevent && eeevent.Pressed)
+            {
+                if(eeevent.Scancode == (int)KeyList.R)
+                {
+                    RenderNextStep();
+                }
+                if (eeevent.Scancode == (int)KeyList.E)
+                {
+                    RenderNextMainStep();
+                }
+                if (eeevent.Scancode == (int)KeyList.W)
+                {
+                    RenderPreviousStep();
+                }
 
-        //if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Escape)
-        //		GetTree().Quit();
-    }
+                if (eeevent.Scancode == (int)KeyList.T && !eeevent.Echo)
+                {
+                    var n = GetNode<TileMap>("GraphTileMap");
+                    if(n.Visible)
+                    {
+                        n.Hide();
+                        GetNode<TileMap>("OverlayTileMap").Hide();
+                    }
+                    else
+                    {
+                        n.Show();
+                        GetNode<TileMap>("OverlayTileMap").Show();
+                    }
+                }
+            }
+        }
+
+            //if (eventKey.Pressed && eventKey.Scancode == (int)KeyList.Escape)
+            //		GetTree().Quit();
+        }
 
 }
