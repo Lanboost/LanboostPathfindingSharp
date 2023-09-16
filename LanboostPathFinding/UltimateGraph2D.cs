@@ -315,9 +315,6 @@ namespace Lanboost.PathFinding.Graph
 		}
 	}
 
-
-	
-
 	public class SubgoalGraph2D<I>: IGraph<Position, SimpleEdge<I>>
 	{
 
@@ -547,6 +544,8 @@ namespace Lanboost.PathFinding.Graph
 			return new Position(n.x % world.GetChunkSize(), n.y % world.GetChunkSize(), n.plane);
 		}
 
+
+		// What does this do? :)
 		private void createSubgoalDistanceMap()
 		{
 			TileDirection[] tileDirections = new TileDirection[]

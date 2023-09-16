@@ -1,3 +1,5 @@
+#define ENABLE_PATH_STEPS
+
 using Godot;
 using System;
 using Lanboost.PathFinding.Graph;
@@ -6,6 +8,7 @@ using System.Collections.Generic;
 using Lanboost.PathFinding.Astar;
 using System.Diagnostics;
 using System.Linq;
+
 
 public class TestTileMap : TileMap
 {
@@ -55,22 +58,26 @@ public class TestTileMap : TileMap
             watch.Stop();
             GD.Print($"createSubgoalGraph in: {watch.ElapsedMilliseconds} ms");
         }
+        GenerateAndShowPath();
+    }
+
+    public void GenerateAndShowPath()
+    {
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             GeneratePath();
             watch.Stop();
             GD.Print($"GeneratePath in: {watch.ElapsedMilliseconds} ms");
         }
-
         var pathNodes = directedAStar.GetPath().Select(tempPos =>
         {
-            return MapToWorld(new Vector2(tempPos.x, tempPos.y));
+            return MapToWorld(new Vector2(tempPos.x, tempPos.y)) + new Vector2(8, 8);
         }).ToArray();
 
         var pathRenderer = GetNode<Line2D>("Line2D");
-        pathRenderer.DrawMultiline(pathNodes, Colors.Red);
-
+        pathRenderer.Points = pathNodes;
     }
+
     public override void _Process(float delta)
     {
         //GD.Print("Hello, world!");
@@ -204,16 +211,22 @@ public class TestTileMap : TileMap
         {
             if (eevent is InputEventMouseButton eeevent)
             {
-                if (eeevent.ButtonIndex == (int)ButtonList.Left && eeevent.Pressed)
+                if (Input.IsKeyPressed((int)KeyList.Shift) && eeevent.ButtonIndex == (int)ButtonList.Left && eeevent.Pressed)
                 {
                     drawing = true;
+                }
+                else if (eeevent.ButtonIndex == (int)ButtonList.Left && eeevent.Pressed)
+                {
+                    var pos = WorldToMap(eeevent.Position);
+                    end = new Position((int)pos.x, (int)pos.y);
+                    GenerateAndShowPath();
                 }
                 if (eeevent.ButtonIndex == (int)ButtonList.Left && !eeevent.Pressed)
                 {
                     drawing = false;
                 }
 
-                if (eeevent.ButtonIndex == (int)ButtonList.Right && eeevent.Pressed)
+                if (Input.IsKeyPressed((int)KeyList.Shift) && eeevent.ButtonIndex == (int)ButtonList.Right && eeevent.Pressed)
                 {
                     clearing = true;
                 }

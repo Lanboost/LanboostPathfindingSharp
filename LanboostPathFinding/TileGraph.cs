@@ -193,7 +193,7 @@ namespace Lanboost.PathFinding.Graph
 
 		public int GetChunkSize()
 		{
-			return this.grid.Length;
+			return Math.Max(this.grid.Length, this.grid[0].Length);
 		}
 
 		public int GetCost(Position p1, Position p2, Edge link)
