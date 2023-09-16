@@ -754,7 +754,7 @@ namespace Lanboost.PathFinding.Graph
 #if ENABLE_PATH_STEPS
 										generationSteps.Add(new GenerationStep(
 											"Creating Clearence Map",
-											$"Position is blocked, set clearance to asd {dist}",
+											$"Position is blocked, set clearance to {dist}",
 											new HighLight(
 												HighLightColor.YELLOW, new Position(areaKey.x * chunkSize + x, areaKey.y * chunkSize + y, areaKey.plane)
 											),
