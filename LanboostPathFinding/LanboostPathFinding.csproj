@@ -7,6 +7,9 @@
     <PackageTags>astar,subgoal,pathfinding</PackageTags>
     <Copyright>MIT</Copyright>
     <PackageProjectUrl>https://github.com/Lanboost/LanboostPathfindingSharp</PackageProjectUrl>
+	<Version>1.0.1</Version>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<PackageReleaseNotes>CHANGELOG.md</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
