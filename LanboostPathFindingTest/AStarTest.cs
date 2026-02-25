@@ -63,5 +63,23 @@ namespace LanboostPathFindingTest
 
 			Assert.AreEqual("Hit max expansions.", astar.FindPath(start, end));
 		}
-	}
+
+        [TestMethod]
+        public void ShouldBeAbleToGoCloseToBlockedTile()
+        {
+            var tileGraph = new TileGraph(new bool[][]
+            {
+                new bool[]{ true, true, false},
+                new bool[]{ false, true , false},
+                new bool[]{ true, true, true }
+            });
+
+            var astar = new AStar<Position, NoEdge>(tileGraph, 1000);
+            var start = new Position(0, 0);
+            var end = new Position(2, 0);
+
+            Assert.AreEqual("No path exists.", astar.FindPathClose(start, end, 0));
+            Assert.AreEqual(null, astar.FindPathClose(start, end, 1.2f));
+        }
+    }
 }

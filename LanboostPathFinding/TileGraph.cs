@@ -91,7 +91,14 @@ namespace Lanboost.PathFinding.Graph
 
 		}
 
-		public int GetCost(Position start, Position end, NoEdge link)
+        public float DistanceSquared(Position from, Position to)
+        {
+			var dx = from.x - to.x;
+			var dy = from.y - to.y;
+			return dx * dx + dy * dy;
+        }
+
+        public int GetCost(Position start, Position end, NoEdge link)
 		{
 			return 1;
 		}

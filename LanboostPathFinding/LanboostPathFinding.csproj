@@ -2,6 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Lanboost</Authors>
+    <Description>Pathfinding library: A-star and 2D subgoal pathfinding</Description>
+    <PackageTags>astar,subgoal,pathfinding</PackageTags>
+    <Copyright>MIT</Copyright>
+    <PackageProjectUrl>https://github.com/Lanboost/LanboostPathfindingSharp</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

@@ -149,5 +149,83 @@ namespace Lanboost.PathFinding.Astar
 			}
 			return "No path exists.";
 		}
-	}
+
+        /// <summary>
+        /// Attempts to find a path between two nodes, but path ends when 'end' is within 'dist'.
+		/// 
+		/// Useful for pathfinding when end is "blocked" but want a path close to it.
+		/// E.g. In 2D Door is closed (and counted as blocking), but want path to either tile close to door.
+        /// </summary>
+        /// <param name="Start">The start node.</param>
+        /// <param name="End">The goal node.</param>
+        /// <returns><c>null</c> if search was successful and a path exists, otherwise string with error.</returns>
+        public String FindPathClose(N Start, N End, float dist)
+        {
+            if (Start.Equals(End))
+            {
+                return "Start and end cannot be the same.";
+            }
+
+            this.End = End;
+            parentLink.Clear();
+            parentNode.Clear();
+            cost.Clear();
+            priorityQueue.Clear();
+            this.graph.AddTemporaryStartEndNodes(Start, End);
+
+            cost.Add(Start, 0);
+            priorityQueue.Enqueue(Start, 0);
+
+            int c = 0;
+			var d2 = dist * dist;
+            while (priorityQueue.Count > 0)
+            {
+
+                c++;
+                if (c > maxExpansions)
+                {
+                    return "Hit max expansions.";
+                }
+
+                N current = priorityQueue.Dequeue();
+
+                if (current.Equals(End) || this.graph.DistanceSquared(current, End) <= d2)
+                {
+                    this.End = current;
+                    return null;
+                }
+
+                var mycost = cost[current];
+                var adjacencies = graph.GetEdges(current);
+
+                foreach (var n in adjacencies)
+                {
+                    var link = n.link;
+                    var edgeNode = n.to;
+                    var pathCost = graph.GetCost(current, edgeNode, link);
+                    var totalCost = mycost + pathCost;
+                    if (!edgeNode.Equals(Start) && !parentNode.ContainsKey(edgeNode) || totalCost < cost[edgeNode])
+                    {
+                        if (parentNode.ContainsKey(edgeNode))
+                        {
+                            parentNode[edgeNode] = current;
+                            parentLink[edgeNode] = link;
+                            cost[edgeNode] = totalCost;
+                        }
+                        else
+                        {
+                            parentNode.Add(edgeNode, current);
+                            parentLink.Add(edgeNode, link);
+                            cost.Add(edgeNode, totalCost);
+                        }
+
+                        int heu = totalCost + graph.GetEstimation(edgeNode, End);
+
+                        priorityQueue.Enqueue(edgeNode, heu);
+                    }
+                }
+            }
+			return "No path exists.";
+        }
+    }
 }

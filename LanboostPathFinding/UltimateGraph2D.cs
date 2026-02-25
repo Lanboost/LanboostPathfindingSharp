@@ -100,6 +100,8 @@ namespace Lanboost.PathFinding.Graph
 		IEnumerable<Edge<N, L>> GetEdges(N node);
 		int GetCost(N from, N to, L link);
 		void AddTemporaryStartEndNodes(N start, N end);
+
+		float DistanceSquared(N from, N to);
 	}
 
 	public interface Link
@@ -1005,5 +1007,12 @@ namespace Lanboost.PathFinding.Graph
 				}
 			}
 		}
-	}
+
+        public float DistanceSquared(Position from, Position to)
+        {
+            var dx = from.x - to.x;
+            var dy = from.y - to.y;
+            return dx * dx + dy * dy;
+        }
+    }
 }
